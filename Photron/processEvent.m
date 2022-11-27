@@ -1,6 +1,6 @@
 function processEvent(sourcePath, targetPath, range, smoothing, trimming, framesPerMillisecond, pixelsPerMicrons, saveVideo, plotCoordinates, showVelocityPlot, lightPeriodiogramRange)
     NORM_MARGIN = 20;
-    MIN_LENGTH = 15;
+    MIN_LENGTH = 20;
 
     disp(strcat('Processing event at : ', sourcePath));
 
@@ -131,7 +131,7 @@ function CrackTime=getCrackTime(vid)
         end
     end
 
-    CrackTime = size(normalized,3)-1;
+    CrackTime = size(vid,3)-1;
 end
 
 function FrameIndex=findFirstAmplitude(amplitude, reader, firstFrame, lastFrame)
