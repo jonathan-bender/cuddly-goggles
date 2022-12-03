@@ -1,4 +1,4 @@
-function processEvent(sourcePath, targetPath, range, smoothing, trimming, lightUpperLimit, lightLowerLimit, lightBinning, framesPerMillisecond, pixelsPerMicrons, saveVideo, plotCoordinates, showVelocityPlot, lightPeriodiogramRange)
+function processEvent(sourcePath, targetPath, range, smoothing, trimming, lightUpperLimit, lightLowerLimit, lightBinning, framesPerMillisecond, pixelsPerMicron, saveVideo, plotCoordinates, showVelocityPlot, lightPeriodiogramRange)
 MIN_LENGTH = 20;
 MAX_SMOOTHING = 5;
 MAX_READ = 600;
@@ -121,30 +121,36 @@ if readEnd > totalFrames - MAX_SMOOTHING
     disp('WARNING: nucleation near last frame');
 end
 
-vid = -double(vid);
-vid = normalizeVid(vid);
+oneDimLight= sum(vid,1);
+oneDimLight = normalizeVid(oneDimLight, 0);
 
-vid = permute(vid, [3 1 2]);
+normalizedVid = -double(vid);
+normalizedVid = normalizeVid(normalizedVid, -1);
+
+maxSmoothed = permute(normalizedVid, [3 1 2]);
 smoothFilt = ones(1, MAX_SMOOTHING)/MAX_SMOOTHING;
-smoothed = filtfilt(smoothFilt, 1, vid);
-vid = permute(vid, [2 3 1]);
-smoothed = permute(smoothed, [2 3 1]);
+maxSmoothed = filtfilt(smoothFilt, 1, maxSmoothed);
+maxSmoothed = permute(maxSmoothed, [2 3 1]);
 
-noise = vid - smoothed;
+noise = normalizedVid - maxSmoothed;
 meanNoise = prctile(reshape(noise,1), 90);
 signalToNoiseRatio = 1/meanNoise;
 
 fprintf(strcat('Crack start: ', num2str(readStart),'.\t Total frames: ', num2str(readEnd), '.\t Signal to noise ratio: ', num2str(signalToNoiseRatio), '\r'));
 
 %-- TODO: smoothing should be done by the S/N ratio 
-vid = permute(vid, [3 1 2]);
+smoothed = permute(normalizedVid, [3 1 2]);
 smoothFilt = ones(1, smoothing)/smoothing;
-vid = filtfilt(smoothFilt, 1, vid);
-vid = permute(vid, [2 3 1]);
+smoothed = filtfilt(smoothFilt, 1, smoothed);
+smoothed = permute(smoothed, [2 3 1]);
 
-transformed = vidTransform(vid, lightUpperLimit, lightLowerLimit, lightBinning);
+transformed = vidTransform(smoothed, lightUpperLimit, lightLowerLimit, lightBinning);
 
-displacement = getDisplacement(transformed, pixelsPerMicrons);
+oneDimVid = sum(smoothed,1);
+oneDimVid = normalizeVid(oneDimVid,-1);
+oneDimVidTransformed = vidTransform(oneDimVid, lightUpperLimit, lightLowerLimit, lightBinning);
+
+displacement = sum(oneDimVidTransformed,1) * pixelsPerMicron;
 velocity = getVelocity(displacement, framesPerMillisecond);
 
 disp(strcat('Saving results to: ', targetPath));
@@ -154,7 +160,7 @@ if saveVideo == 1
 end
 
 if size(plotCoordinates,1) ~= 0
-    plotLightInTime(vid, targetPath, plotCoordinates, framesPerMillisecond, pixelsPerMicrons);
+    plotLightInTime(oneDimLight, targetPath, plotCoordinates, framesPerMillisecond, pixelsPerMicron);
 end
 
 if showVelocityPlot == 1
@@ -194,7 +200,7 @@ while abs(firstFrame-lastFrame)>2
 end
 end
 
-function Normalized=normalizeVid(vid)
+function Normalized=normalizeVid(vid, absMin)
 
 Normalized = zeros(size(vid));
 
@@ -213,6 +219,10 @@ for i=1:size(vid,1)
             if(current > maxValue)
                 maxValue = current;
             end
+        end
+
+        if absMin >= 0
+            minValue = absMin;
         end
 
         drop = double(maxValue - minValue);
@@ -239,15 +249,6 @@ Hd = filterDesign(114,116, framesPerMillisecond);
 Result = filtfilt(Hd.sosMatrix,Hd.ScaleValues,mat);
 end
 
-function Displacement=getDisplacement(vid, pixelsPerMicron)
-timeSize = size(vid,3);
-Displacement = zeros(timeSize,1);
-for i=1:timeSize
-    Displacement(i) = sum(sum(vid(:,:,i),'double'),'double') / size(vid, 1) * pixelsPerMicron;
-end
-
-
-end
 
 function Velocity=getVelocity(displacement, framesPerMillisecond)
 timeSize = size(displacement,1);
