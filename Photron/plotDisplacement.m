@@ -3,7 +3,7 @@ function plotDisplacement(displacement, targetPath, framesPerMillisecond)
     
     figure;
     
-    timeSize = size(displacement,1);
+    timeSize = size(displacement,2);
     timeline = linspace(0,timeSize/framesPerMillisecond,timeSize);
     plot(timeline, displacement);
     

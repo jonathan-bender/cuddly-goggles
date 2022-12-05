@@ -1,8 +1,8 @@
 function processEvent(sourcePath, targetPath, range, smoothing, trimming, lightUpperLimit, lightLowerLimit, lightBinning, framesPerMillisecond, pixelsPerMicron, saveVideo, plotCoordinates, showVelocityPlot, lightPeriodiogramRange)
 MIN_LENGTH = 20;
 MAX_SMOOTHING = 5;
-MAX_READ = 600;
-MIN_SIGNAL = 1.3; % mininum signal to noise ratio for noisy pixels
+MAX_READ = 300;
+MIN_SIGNAL = 0.08; % mininum signal to noise ratio for noisy pixels
 
 disp(strcat('Processing event at : ', sourcePath));
 
@@ -50,7 +50,7 @@ end
 
 currentColumn = 1;
 while currentColumn < size(vid,2)
-    if ~isNoisyColumn(vid(:,currentcolumn,:),MIN_SIGNAL)
+    if ~isNoisyColumn(vid(:,currentColumn,:),MIN_SIGNAL)
         break;
     end
 
@@ -79,12 +79,12 @@ for i=1:size(vid,1)
 end
 
 vid = permute(vid, [3 1 2]);
-vid = removeSourceFrequency(vid, framesPerMillisecond);
+vid = removeSourceFrequency(double(vid), framesPerMillisecond);
 vid = permute(vid, [2 3 1]);
 
 midTime = round(size(vid,3)/2);
 
-currentAmp = sum(sum(vid(:,:,midTime)));
+currentAmp = sum(sum(vid(:,:,midTime), 'double'), 'double');
 for i=midTime+MAX_SMOOTHING:MAX_SMOOTHING:size(vid,3)
     prevAmp = currentAmp;
     currentAmp = sum(sum(vid(:,:,i)));
@@ -106,7 +106,7 @@ for i=midTime-MAX_SMOOTHING:-MAX_SMOOTHING:1
     end
 end
 
-length = End - Start;
+length = readEnd - readStart;
 
 if length < MIN_LENGTH
     disp('WARNING: Event is too short. No results obtained.');
@@ -121,8 +121,8 @@ if readEnd > totalFrames - MAX_SMOOTHING
     disp('WARNING: nucleation near last frame');
 end
 
-oneDimLight= sum(vid,1);
-oneDimLight = normalizeVid(oneDimLight, 0);
+oneDimLight = sum(vid,1);
+oneDimLight = squeeze(normalizeVid(oneDimLight, 0));
 
 normalizedVid = -double(vid);
 normalizedVid = normalizeVid(normalizedVid, -1);
@@ -133,24 +133,28 @@ maxSmoothed = filtfilt(smoothFilt, 1, maxSmoothed);
 maxSmoothed = permute(maxSmoothed, [2 3 1]);
 
 noise = normalizedVid - maxSmoothed;
-meanNoise = prctile(reshape(noise,1), 90);
+meanNoise = prctile(noise(:), 90);
 signalToNoiseRatio = 1/meanNoise;
 
-fprintf(strcat('Crack start: ', num2str(readStart),'.\t Total frames: ', num2str(readEnd), '.\t Signal to noise ratio: ', num2str(signalToNoiseRatio), '\r'));
+fprintf(strcat('Crack start: ', num2str(readStart),'.\t Total frames: ', num2str(length), '.\t Signal to noise ratio: ', num2str(signalToNoiseRatio), '\r'));
 
 %-- TODO: smoothing should be done by the S/N ratio 
-smoothed = permute(normalizedVid, [3 1 2]);
-smoothFilt = ones(1, smoothing)/smoothing;
-smoothed = filtfilt(smoothFilt, 1, smoothed);
-smoothed = permute(smoothed, [2 3 1]);
+if smoothing > 1
+    smoothed = permute(normalizedVid, [3 1 2]);
+    smoothFilt = ones(1, smoothing)/smoothing;
+    smoothed = filtfilt(smoothFilt, 1, smoothed);
+    smoothed = permute(smoothed, [2 3 1]);
+else
+    smoothed = normalizedVid;
+end
 
 transformed = vidTransform(smoothed, lightUpperLimit, lightLowerLimit, lightBinning);
 
 oneDimVid = sum(smoothed,1);
 oneDimVid = normalizeVid(oneDimVid,-1);
-oneDimVidTransformed = vidTransform(oneDimVid, lightUpperLimit, lightLowerLimit, lightBinning);
+oneDimVidTransformed = squeeze(vidTransform(oneDimVid, lightUpperLimit, lightLowerLimit, lightBinning));
 
-displacement = sum(oneDimVidTransformed,1) * pixelsPerMicron;
+displacement = squeeze(sum(oneDimVidTransformed,1)) * pixelsPerMicron;
 velocity = getVelocity(displacement, framesPerMillisecond);
 
 disp(strcat('Saving results to: ', targetPath));
@@ -251,7 +255,7 @@ end
 
 
 function Velocity=getVelocity(displacement, framesPerMillisecond)
-timeSize = size(displacement,1);
+timeSize = size(displacement,2);
 Velocity = zeros(timeSize, 1);
 
 for i=2:timeSize
@@ -313,18 +317,18 @@ function IsNoisy=isNoisy(arr,minRatio)
 drop = arr(1) - arr(end);
 arrMean = mean(arr);
 
-IsNoisy = drop / arrMean < minRatio;
+IsNoisy = double(drop) / arrMean < minRatio;
 end
 
 function IsNoisy=isNoisyColumn(vid, minRatio)
+noisyPixels =0;
 for i=1:size(vid,1)
     if isNoisy(vid(i,:), minRatio)
-        IsNoisy = 1;
-        return;
+        noisyPixels = noisyPixels +1;
     end
 end
 
-IsNoisy = 0;
+IsNoisy = noisyPixels > size(vid,1)/2;
 end
 
 function Vid=vidTransform(vid,upperLimit, lowerLimit, binning)
@@ -342,9 +346,7 @@ for i=1:size(vid,1)
     end
 end
 
-
-
-normalizeVid(vid);
+vid=normalizeVid(vid,-1);
 Vid = vid;
 if binning == 0
     return;
