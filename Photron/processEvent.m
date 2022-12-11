@@ -1,8 +1,8 @@
 function processEvent(sourcePath, targetPath, range, smoothing, trimming, lightUpperLimit, lightLowerLimit, lightBinning, framesPerMillisecond, pixelsPerMicron, saveVideo, plotCoordinates, showVelocityPlot, lightPeriodiogramRange)
 MIN_LENGTH = 20;
 MAX_SMOOTHING = 5;
-MAX_READ = 300;
-MIN_SIGNAL = 0.08; % mininum signal to noise ratio for noisy pixels
+MAX_READ = 600;
+MIN_SIGNAL = 0.01; % mininum signal to noise ratio for noisy pixels
 
 disp(strcat('Processing event at : ', sourcePath));
 
@@ -69,6 +69,11 @@ while currentColumn > 0
 end
 
 vid = vid(:,1:currentColumn-1,:);
+
+if(size(vid,2) == 0)
+    disp('WARNING: Event is too noisy. No results obtained');
+    return;
+end
 
 for i=1:size(vid,1)
     for j=1:size(vid,2)

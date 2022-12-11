@@ -26,13 +26,13 @@ legendItems = char.empty(0,size(coordinates,1));
 
 
 for i=1:size(coordinates,2)
-    result = strcat(num2str(round(coordinates(i))), ' mm from nucleation');
+    result = strcat(num2str(round(coordinates(i))), 'mm from nucleation');
     for j=1:size(result,2)
         legendItems(i,j) = result(j);
     end
 end
     
-legend(legendItems, 'Location', 'SouthWest');
+legend(legendItems, 'Location', 'NorthEast');
 
 title('Light Over Time');
 xlabel('time [milliseconds]');
