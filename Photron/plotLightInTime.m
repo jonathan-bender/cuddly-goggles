@@ -4,7 +4,9 @@ lightInTime = zeros(size(coordinates,1),size(lightVideo,2));
 
 for i=1:size(coordinates,2)
     pixelCoordinates = round(coordinates(i) / pixelPerMicrons * 1000);
-    lightInTime(i,:) = lightVideo(pixelCoordinates,:);
+    if pixelCoordinates > 0 && pixelCoordinates < size(lightVideo,1)
+        lightInTime(i,:) = lightVideo(pixelCoordinates,:);
+    end
 end
 
 timeSize = size(lightVideo,2);
@@ -26,7 +28,7 @@ legendItems = char.empty(0,size(coordinates,1));
 
 
 for i=1:size(coordinates,2)
-    result = strcat(num2str(round(coordinates(i))), 'mm from nucleation');
+    result = strcat(num2str(round(coordinates(i))), 'mm from left');
     for j=1:size(result,2)
         legendItems(i,j) = result(j);
     end

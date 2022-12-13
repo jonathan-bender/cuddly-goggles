@@ -1,8 +1,21 @@
-function processEvent(sourcePath, targetPath, range, smoothing, trimming, lightUpperLimit, lightLowerLimit, lightBinning, framesPerMillisecond, pixelsPerMicron, saveVideo, plotCoordinates, showVelocityPlot, lightPeriodiogramRange)
+function processEvent(sourcePath, targetPath)
+RANGE = [];
+SMOOTHING = 3;
+INCLUDE_MAX_READ = 0;
+TRIMMING = [500 1150];
+LIGHT_UPPER_LIMIT = 0.6;
+LIGHT_LOWER_LIMIT = 0.15;
+LIGHT_BINNING = 2;
+FRAMES_PER_MILLISECOND = 581;
+PIXELS_PER_MICRON = 200000/1280;
+SAVE_VIDEO = 1;
+PLOT_COORDINATES = [30 60 90];
+SHOW_VELOCITY_PLOT = 1;
+LIGHT_PERIODIOGRAM_RANGE = [];
 MIN_LENGTH = 20;
 MAX_SMOOTHING = 5;
-MAX_READ = 600;
-MIN_SIGNAL = 0.01; % mininum signal to noise ratio for noisy pixels
+MAX_READ = 180;
+MIN_SIGNAL = 0.03; % mininum signal to noise ratio for noisy pixels
 
 disp(strcat('Processing event at : ', sourcePath));
 
@@ -10,47 +23,47 @@ reader = VideoReader(sourcePath);
 
 totalFrames = int64(reader.NumberOfFrames);
 
-if size(range,1)==0
-    range = [1 totalFrames];
+if size(RANGE,1)==0
+    RANGE = [1 totalFrames];
 end
 
-firstFrame = read(reader, range(1));
-lastFrame = read(reader, range(2));
+firstFrame = read(reader, RANGE(1));
+lastFrame = read(reader, RANGE(2));
 
 firstAmplitude = getLightFromFrame(firstFrame);
 lastAmplitude = getLightFromFrame(lastFrame);
 
 midAmplitude = (firstAmplitude+lastAmplitude)/2;
 
-midTime = findFirstAmplitude(midAmplitude, reader, range(1), range(2));
+midTime = findFirstAmplitude(midAmplitude, reader, RANGE(1), RANGE(2));
 
 readStart = midTime - MAX_READ/2;
 readEnd = midTime + MAX_READ/2;
 
-if readStart < range(1)
-    readStart = range(1);
-    readEnd = range(1) + MAX_READ;
+if readStart < RANGE(1)
+    readStart = RANGE(1);
+    readEnd = RANGE(1) + MAX_READ;
 end
 
-if readEnd > range(2)
-    readStart = range(2) - MAX_READ;
+if readEnd > RANGE(2)
+    readStart = RANGE(2) - MAX_READ;
     if readStart < 1 % could be replaced by comparing the length of the video to the max length
         readStart = 1;
     end
-    readEnd = range(2);
+    readEnd = RANGE(2);
 end
 
 vid = read(reader, [readStart,readEnd]);
 
 vid = squeeze(vid(:,:,1,:));
 
-if size(trimming,1) ~= 0
-    vid = vid(:,trimming(1):trimming(2),:);
+if size(TRIMMING,1) ~= 0
+    vid = vid(:,TRIMMING(1):TRIMMING(2),:);
 end
 
 currentColumn = 1;
 while currentColumn < size(vid,2)
-    if ~isNoisyColumn(vid(:,currentColumn,:),MIN_SIGNAL)
+    if ~isNoisyColumn(vid(:,currentColumn,:),MIN_SIGNAL, MAX_SMOOTHING)
         break;
     end
 
@@ -61,7 +74,7 @@ vid = vid(:,currentColumn+1:end,:);
 
 currentColumn = size(vid,2);
 while currentColumn > 0
-    if ~isNoisyColumn(vid(:,currentColumn,:), MIN_SIGNAL)
+    if ~isNoisyColumn(vid(:,currentColumn,:), MIN_SIGNAL, MAX_SMOOTHING)
         break;
     end
 
@@ -77,52 +90,36 @@ end
 
 for i=1:size(vid,1)
     for j=1:size(vid,2)
-        if isNoisy(vid(i,j,:), MIN_SIGNAL)
+        if isNoisy(vid(i,j,:), MIN_SIGNAL, MAX_SMOOTHING)
             vid(i,j,:) = 0;
         end
     end
 end
 
 vid = permute(vid, [3 1 2]);
-vid = removeSourceFrequency(double(vid), framesPerMillisecond);
+vid = removeSourceFrequency(double(vid), FRAMES_PER_MILLISECOND);
 vid = permute(vid, [2 3 1]);
 
-midTime = round(size(vid,3)/2);
+crackStart = readStart;
+crackEnd = readEnd;
 
-currentAmp = sum(sum(vid(:,:,midTime), 'double'), 'double');
-for i=midTime+MAX_SMOOTHING:MAX_SMOOTHING:size(vid,3)
-    prevAmp = currentAmp;
-    currentAmp = sum(sum(vid(:,:,i)));
-    if prevAmp <= currentAmp
-        vid=vid(:,:,1:i);
-        readEnd = readEnd - size(vid,3) + i;
-        break;
-    end
+if(~INCLUDE_MAX_READ)
+    [crackStart, crackEnd] = getCrackStartAndEnd(vid, MAX_SMOOTHING, readStart, readEnd);
+    vid = vid(:,:,(crackStart-readStart+1):(end-readEnd+crackEnd));
 end
 
-currentAmp = sum(sum(vid(:,:,midTime)));
-for i=midTime-MAX_SMOOTHING:-MAX_SMOOTHING:1
-    prevAmp = currentAmp;
-    currentAmp = sum(sum(vid(:,:,i)));
-    if prevAmp >= currentAmp
-        vid=vid(:,:,i:end);
-        readStart = readStart + i;
-        break;
-    end
-end
-
-length = readEnd - readStart;
+length = crackEnd - crackStart;
 
 if length < MIN_LENGTH
     disp('WARNING: Event is too short. No results obtained.');
     return;
 end
 
-if readStart < MAX_SMOOTHING
+if crackStart < MAX_SMOOTHING
     disp('WARNING: nucleation near first frame');
 end
 
-if readEnd > totalFrames - MAX_SMOOTHING
+if crackEnd > totalFrames - MAX_SMOOTHING
     disp('WARNING: nucleation near last frame');
 end
 
@@ -141,44 +138,44 @@ noise = normalizedVid - maxSmoothed;
 meanNoise = prctile(noise(:), 90);
 signalToNoiseRatio = 1/meanNoise;
 
-fprintf(strcat('Crack start: ', num2str(readStart),'.\t Total frames: ', num2str(length), '.\t Signal to noise ratio: ', num2str(signalToNoiseRatio), '\r'));
+fprintf(strcat('Crack start: ', num2str(crackStart),'.\t Total frames: ', num2str(length), '.\t Signal to noise ratio: ', num2str(signalToNoiseRatio), '\r'));
 
 %-- TODO: smoothing should be done by the S/N ratio 
-if smoothing > 1
+if SMOOTHING > 1
     smoothed = permute(normalizedVid, [3 1 2]);
-    smoothFilt = ones(1, smoothing)/smoothing;
+    smoothFilt = ones(1, SMOOTHING)/SMOOTHING;
     smoothed = filtfilt(smoothFilt, 1, smoothed);
     smoothed = permute(smoothed, [2 3 1]);
 else
     smoothed = normalizedVid;
 end
 
-transformed = vidTransform(smoothed, lightUpperLimit, lightLowerLimit, lightBinning);
+transformed = vidTransform(smoothed, LIGHT_UPPER_LIMIT, LIGHT_LOWER_LIMIT, LIGHT_BINNING);
 
 oneDimVid = sum(smoothed,1);
 oneDimVid = normalizeVid(oneDimVid,-1);
-oneDimVidTransformed = squeeze(vidTransform(oneDimVid, lightUpperLimit, lightLowerLimit, lightBinning));
+oneDimVidTransformed = squeeze(vidTransform(oneDimVid, LIGHT_UPPER_LIMIT, LIGHT_LOWER_LIMIT, LIGHT_BINNING));
 
-displacement = squeeze(sum(oneDimVidTransformed,1)) * pixelsPerMicron;
-velocity = getVelocity(displacement, framesPerMillisecond);
+displacement = squeeze(sum(oneDimVidTransformed,1)) * PIXELS_PER_MICRON;
+velocity = getVelocity(displacement, FRAMES_PER_MILLISECOND);
 
 disp(strcat('Saving results to: ', targetPath));
 
-if saveVideo == 1
+if SAVE_VIDEO == 1
     exportCrackColormap(transformed, targetPath);
 end
 
-if size(plotCoordinates,1) ~= 0
-    plotLightInTime(oneDimLight, targetPath, plotCoordinates, framesPerMillisecond, pixelsPerMicron);
+if size(PLOT_COORDINATES,1) ~= 0
+    plotLightInTime(oneDimLight, targetPath, PLOT_COORDINATES, FRAMES_PER_MILLISECOND, PIXELS_PER_MICRON);
 end
 
-if showVelocityPlot == 1
-    plotDisplacement(displacement, targetPath, framesPerMillisecond);
-    plotVelocity(velocity, targetPath, framesPerMillisecond);
+if SHOW_VELOCITY_PLOT == 1
+    plotDisplacement(displacement, targetPath, FRAMES_PER_MILLISECOND);
+    plotVelocity(velocity, targetPath, FRAMES_PER_MILLISECOND);
 end
 
-if size(lightPeriodiogramRange,1) ~= 0
-    showPeriodiogram(sourcePath, lightPeriodiogramRange, framesPerMillisecond);
+if size(LIGHT_PERIODIOGRAM_RANGE,1) ~= 0
+    showPeriodiogram(sourcePath, lightPeriodiogramRange, FRAMES_PER_MILLISECOND);
 end
 end
 
@@ -259,6 +256,30 @@ Result = filtfilt(Hd.sosMatrix,Hd.ScaleValues,mat);
 end
 
 
+function [CrackStart,CrackEnd]=getCrackStartAndEnd(vid, maxSmoothing, readStart, readEnd)
+midTime = round(size(vid,3)/2);
+
+currentAmp = sum(sum(vid(:,:,midTime), 'double'), 'double');
+for i=midTime+maxSmoothing:maxSmoothing:size(vid,3)
+    prevAmp = currentAmp;
+    currentAmp = sum(sum(vid(:,:,i)));
+    if prevAmp <= currentAmp
+        CrackEnd = readEnd - size(vid,3) + i;
+        break;
+    end
+end
+
+currentAmp = sum(sum(vid(:,:,midTime)));
+for i=midTime-maxSmoothing:-maxSmoothing:1
+    prevAmp = currentAmp;
+    currentAmp = sum(sum(vid(:,:,i)));
+    if prevAmp >= currentAmp
+        CrackStart = readStart + i;
+        break;
+    end
+end
+end
+
 function Velocity=getVelocity(displacement, framesPerMillisecond)
 timeSize = size(displacement,2);
 Velocity = zeros(timeSize, 1);
@@ -318,17 +339,17 @@ plot(xAxis, 10*log10(pxxOriginal), xAxis, 10*log10(pxx));
 legend('original','filtered');
 end
 
-function IsNoisy=isNoisy(arr,minRatio)
-drop = arr(1) - arr(end);
+function IsNoisy=isNoisy(arr,minRatio,spread)
+drop = mean(arr(1:spread)) - mean(arr(end-spread:end));
 arrMean = mean(arr);
 
 IsNoisy = double(drop) / arrMean < minRatio;
 end
 
-function IsNoisy=isNoisyColumn(vid, minRatio)
+function IsNoisy=isNoisyColumn(vid, minRatio, spread)
 noisyPixels =0;
 for i=1:size(vid,1)
-    if isNoisy(vid(i,:), minRatio)
+    if isNoisy(vid(i,1,:), minRatio, spread)
         noisyPixels = noisyPixels +1;
     end
 end
