@@ -1,10 +1,10 @@
-function plotVelocity(velocity, targetPath, framesPerMillisecond)
+function plotVelocity(velocity, targetPath, framesPerMillisecond,timeOffset)
     velocity(1:5) = zeros(1,5);
     
     figure;
         
     timeSize = size(velocity,1);
-    timeline = linspace(0,timeSize/framesPerMillisecond,timeSize);
+    timeline = linspace(0,timeSize/framesPerMillisecond,timeSize)+timeOffset;
     plot(timeline, velocity);
     
     title('Velocity Over Time');

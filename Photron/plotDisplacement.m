@@ -1,10 +1,10 @@
-function plotDisplacement(displacement, targetPath, framesPerMillisecond)
+function plotDisplacement(displacement, targetPath, framesPerMillisecond, timeOffset)
     displacement = displacement / 1000;
     
     figure;
     
     timeSize = size(displacement,2);
-    timeline = linspace(0,timeSize/framesPerMillisecond,timeSize);
+    timeline = linspace(0,timeSize/framesPerMillisecond,timeSize)+timeOffset;
     plot(timeline, displacement);
     
     title('Displacement Over Time');

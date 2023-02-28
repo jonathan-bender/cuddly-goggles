@@ -12,7 +12,7 @@ function exportCrackColormap(vid, targetPath)
         for j=1:size(vid,1)
             for k=1:size(vid,2)
                 current = vid(j,k,i);
-                currentColormapped = floor((current * 0.999)  * 256) + 1;
+                currentColormapped = floor((current * 0.9999999)  * 256) + 1;
                 
                 result(j,k,1) = currentColormap(currentColormapped,1);
                 result(j,k,2) = currentColormap(currentColormapped,2);

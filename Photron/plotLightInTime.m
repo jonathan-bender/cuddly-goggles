@@ -1,4 +1,4 @@
-function plotLightInTime(lightVideo, targetPath, coordinates, framesPerMillisecond, pixelPerMicrons)
+function plotLightInTime(lightVideo, targetPath, coordinates, framesPerMillisecond, pixelPerMicrons,timeOffset)
 
 lightInTime = zeros(size(coordinates,1),size(lightVideo,2));
 
@@ -10,7 +10,7 @@ for i=1:size(coordinates,2)
 end
 
 timeSize = size(lightVideo,2);
-timeLine = linspace(0,timeSize/framesPerMillisecond,timeSize);
+timeLine = linspace(0,timeSize/framesPerMillisecond,timeSize)+timeOffset;
 
 myColors = 'rgbcmykw';
 figure;

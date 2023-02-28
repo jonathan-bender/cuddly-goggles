@@ -1,21 +1,25 @@
-function processEvent(sourcePath, targetPath)
+function processEvent(sourcePath, targetPath, sgData)
 RANGE = [];
-SMOOTHING = 3;
-INCLUDE_MAX_READ = 0;
-TRIMMING = [500 1150];
+SMOOTHING = 1;
+INCLUDE_MAX_READ = 1;
+TRIMMING = [100 1250];
 LIGHT_UPPER_LIMIT = 0.6;
-LIGHT_LOWER_LIMIT = 0.15;
-LIGHT_BINNING = 2;
+LIGHT_LOWER_LIMIT = 0.2;
+LIGHT_BINNING = 0;
 FRAMES_PER_MILLISECOND = 581;
 PIXELS_PER_MICRON = 200000/1280;
-SAVE_VIDEO = 1;
-PLOT_COORDINATES = [30 60 90];
+SAVE_VIDEO = 0;
+PLOT_COORDINATES = [50 97 105 150];
 SHOW_VELOCITY_PLOT = 1;
 LIGHT_PERIODIOGRAM_RANGE = [];
 MIN_LENGTH = 20;
 MAX_SMOOTHING = 5;
-MAX_READ = 180;
-MIN_SIGNAL = 0.03; % mininum signal to noise ratio for noisy pixels
+MAX_READ = 400;
+PLOT_LIGHT_XT = 1;
+MIN_SIGNAL = 0; % mininum signal to noise ratio for noisy pixels
+TRIM_NOISY_EDGES = 0;
+FRAMES_FROM_TRIGGER=5500;  % number of frames to the time of the trigger
+TRIGGER_OFFSET=8.03; % some offset to the trigger in milliseconds
 
 disp(strcat('Processing event at : ', sourcePath));
 
@@ -61,6 +65,7 @@ if size(TRIMMING,1) ~= 0
     vid = vid(:,TRIMMING(1):TRIMMING(2),:);
 end
 
+if TRIM_NOISY_EDGES
 currentColumn = 1;
 while currentColumn < size(vid,2)
     if ~isNoisyColumn(vid(:,currentColumn,:),MIN_SIGNAL, MAX_SMOOTHING)
@@ -82,6 +87,8 @@ while currentColumn > 0
 end
 
 vid = vid(:,1:currentColumn-1,:);
+
+end
 
 if(size(vid,2) == 0)
     disp('WARNING: Event is too noisy. No results obtained');
@@ -165,18 +172,25 @@ if SAVE_VIDEO == 1
     exportCrackColormap(transformed, targetPath);
 end
 
+timeOffset=(FRAMES_FROM_TRIGGER-double(crackStart)+double(RANGE(1,1)))/FRAMES_PER_MILLISECOND-TRIGGER_OFFSET;
+
 if size(PLOT_COORDINATES,1) ~= 0
-    plotLightInTime(oneDimLight, targetPath, PLOT_COORDINATES, FRAMES_PER_MILLISECOND, PIXELS_PER_MICRON);
+    plotLightInTime(oneDimLight, targetPath, PLOT_COORDINATES, FRAMES_PER_MILLISECOND, PIXELS_PER_MICRON,timeOffset);
 end
 
 if SHOW_VELOCITY_PLOT == 1
-    plotDisplacement(displacement, targetPath, FRAMES_PER_MILLISECOND);
-    plotVelocity(velocity, targetPath, FRAMES_PER_MILLISECOND);
+    plotDisplacement(displacement, targetPath, FRAMES_PER_MILLISECOND, timeOffset);
+    plotVelocity(velocity, targetPath, FRAMES_PER_MILLISECOND,timeOffset);
 end
 
 if size(LIGHT_PERIODIOGRAM_RANGE,1) ~= 0
     showPeriodiogram(sourcePath, lightPeriodiogramRange, FRAMES_PER_MILLISECOND);
 end
+
+if PLOT_LIGHT_XT == 1
+    plotLightXT(oneDimVidTransformed, targetPath, FRAMES_PER_MILLISECOND, PIXELS_PER_MICRON, timeOffset);
+end
+
 end
 
 function Light=getLightFromFrame(vidFrame)
@@ -258,6 +272,9 @@ end
 
 function [CrackStart,CrackEnd]=getCrackStartAndEnd(vid, maxSmoothing, readStart, readEnd)
 midTime = round(size(vid,3)/2);
+
+CrackStart = readStart;
+CrackEnd = readEnd;
 
 currentAmp = sum(sum(vid(:,:,midTime), 'double'), 'double');
 for i=midTime+maxSmoothing:maxSmoothing:size(vid,3)
