@@ -1,2 +1,0 @@
-function getLightInTime()
-end
