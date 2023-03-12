@@ -15,7 +15,7 @@ lastAmplitude = getLightFromFrame(lastFrame);
 
 midAmplitude = (firstAmplitude+lastAmplitude)/2;
 
-midTime = findFirstAmplitude(reader, midAmplitude, range(1), range(2));
+midTime = findFirstAmplitude(midAmplitude, reader, range(1), range(2));
 
 ReadStart = midTime - maxRead/2;
 ReadEnd = midTime + maxRead/2;

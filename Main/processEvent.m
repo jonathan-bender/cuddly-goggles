@@ -1,12 +1,11 @@
 function processEvent(sourcePath, sgSourcePath, sgEventNum, targetPath)
-
 % reading cam file
 RANGE = [];
 MAX_READ = 400;
 
 % video data
 FRAMES_PER_MILLISECOND = 581;
-PIXELS_PER_MICRON = 200000/1280;
+PIXELS_PER_MICRON = 6315;
 TOTAL_LENGTH=200000;
 TRIGGER_FRAME=5500;
 TRIGGER_DELAY=7.86;
@@ -15,7 +14,7 @@ TRIGGER_DELAY=7.86;
 TRIMMING=[];
 TRIM_NOISY_EDGES=0;
 MIN_SIGNAL=0.05;
-MIN_LIGHT=50;
+EDGE_DROP_RANGE=9;
 REFERENCE_FRAMES=1:30;
 MAX_SMOOTHING=5;
 SOURCE_FREQUENCY=115;
@@ -45,7 +44,7 @@ end
 
 vid=nullifyNoisyPixels(vid, MIN_SIGNAL, MAX_SMOOTHING);
 
-xAxis=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, MIN_LIGHT);
+xAxis=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
 
 vid=removeSourceFrequency(vid, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
 
@@ -67,14 +66,17 @@ end
 end
 
 displacement = getTipDisplacement(vid,xAxis,REFERENCE_FRAMES,CRACK_TIP_THRESHOLD);
-plotDisplacement(displacement,timeline);
+plotDisplacement(displacement,timeline,targetPath);
 
 lightXT = getNormalizedContactArea(vid,REFERENCE_FRAMES);
-plotLightXT(lightXT,xAxis,timeline);
+plotLightXT(lightXT,xAxis,timeline,targetPath);
 
-sgData=getStrainGaugeData(sgSourcePath,sgEventNum);
-sgForDisplacement=getStrainGaugeForDisplacement(sgData,U_XX,U_YY,timeline,displacement);
+sgData=GetSgData(sgSourcePath,sgEventNum,'shift','fix','');
 
-plotSgForDisplacement();
+for i=1:size(U_XX)
+    Uxx=U_XX(i);
+    [sgXAxis sgPosition]=getSgXAxis(sgData,Uxx,timeline,displacement);
+    plotSgForDisplacement(sgData.Uxx(:,Uxx),sgXAxis,'Uxx',sgPosition,targetPath);
+end
 
 end

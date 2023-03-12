@@ -22,7 +22,10 @@ end
 
 Vid = vid(:,1:currentColumn-1,:);
 
+else
+    Vid=vid;
 end
+
 end
 
 function IsNoisy=isNoisyColumn(vid, minRatio, spread)
