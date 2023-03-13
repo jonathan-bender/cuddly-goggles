@@ -1,9 +1,7 @@
 function Normalized=getNormalizedContactArea(vid,referenceFrames)
-% make 1d
-contactArea = mean(double(vid),2);
 
-% get mean of reference frames
-referenceContactArea = mean(contactArea(:,referenceFrames),2);
+contactArea = squeeze(mean(vid));
+referenceContactArea = squeeze(mean(contactArea(:,referenceFrames),2));
 
 Normalized=zeros(size(contactArea));
 for i=1:size(contactArea,1)

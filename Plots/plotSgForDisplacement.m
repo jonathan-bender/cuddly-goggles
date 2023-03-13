@@ -1,12 +1,12 @@
-function plotSgForDisplacement(sg,sgXAxis,plotTitle,sgPosition,targetPath)
+function plotSgForDisplacement(sg,sgXAxis,plotTitle,fileTitle,sgPosition,targetPath)
     figure;
     
-    plot(sgXAxis, sg);
+    plot(sgXAxis/1000, sg/1000000);
     
-    title([plotTitle ' at ' num2str(sgPosition)]);
-    xlabel('x-xTip [millimeters]');
+    title([plotTitle ' at ' num2str(sgPosition) 'mm']);
+    xlabel('x-x_{tip} [millimeters]');
     ylabel(plotTitle);
     
-    saveas(gcf,strcat(targetPath, '/', plotTitle, sgPosition, '.jpg'));
+    saveas(gcf,strcat(targetPath, '/', fileTitle, num2str(sgPosition), '.jpg'));
     close;
 end

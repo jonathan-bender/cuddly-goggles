@@ -1,6 +1,6 @@
 function plotLightXT(lightXT,xAxis,timeline, targetPath)
     figure;
-    imagesc(xAxis,timeline,lightXT);
+    imagesc(xAxis/1000,timeline,lightXT');
     
     set(gca,'YDir','normal')
     title('Light Intensity');

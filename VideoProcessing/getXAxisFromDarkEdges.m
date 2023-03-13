@@ -1,8 +1,6 @@
 function XAxis=getXAxisFromDarkEdges(vid, resolution, totalLength, referenceFrames, edgeDrop)
 
-contactAreaSize=double(size(referenceFrames,2)/size(vid,1));
-referenceVid=double(squeeze(mean(mean(double(vid(:,:,referenceFrames)),3))));
-contactArea=referenceVid/contactAreaSize;
+contactArea=squeeze(mean(mean(vid(:,:,referenceFrames),3)));
 
 vidWidth=size(contactArea,2);
 
@@ -18,9 +16,9 @@ while rightEdge > 2 && (contactArea(rightEdge-1)-contactArea(rightEdge)<edgeDrop
 end
     
 if vidWidth-rightEdge < leftEdge
-    leftEdge=rightEdge-totalLength/resolution;
+    leftEdge=rightEdge-totalLength*resolution;
 end
 
-XAxis=linspace(-leftEdge*resolution,totalLength-leftEdge*resolution, vidWidth);
+XAxis=linspace(-leftEdge/resolution,(vidWidth-leftEdge)/resolution, vidWidth);
 
 end

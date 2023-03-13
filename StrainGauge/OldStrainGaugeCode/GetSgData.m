@@ -9,7 +9,7 @@ exp_details=expDetailsRead(exper);
 % exp_details=expDetailsRead_Ilya(exper);
 
 
-data=acq132_event_get_data(exper,eventNum,Tstart,Tend,smt,'U1','U2','U3','x_sg','y_sg','sg_angle','F','N','AEP','AES2');
+data=acq132_event_get_data(exper,eventNum,Tstart,Tend,smt,'U1','U2','U3','x_sg','y_sg','sg_angle','F','N');
 
 %% Shift U1&U3
 if strcmp(shift,'shift')

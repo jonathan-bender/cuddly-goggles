@@ -1,7 +1,7 @@
 function plotDisplacement(displacement,timeline, targetPath)
     figure;
     
-    plot(timeline, displacement);
+    plot(timeline, displacement/1000);
     
     title('Tip Position');
     xlabel('time [milliseconds]');
