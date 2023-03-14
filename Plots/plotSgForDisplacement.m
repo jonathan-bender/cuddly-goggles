@@ -7,6 +7,8 @@ function plotSgForDisplacement(sg,sgXAxis,plotTitle,fileTitle,sgPosition,targetP
     xlabel('x-x_{tip} [millimeters]');
     ylabel(plotTitle);
     
-    saveas(gcf,strcat(targetPath, '/', fileTitle, num2str(sgPosition), '.jpg'));
-    close;
+    if ~strcmp(targetPath,'')
+        saveas(gcf,strcat(targetPath, '/', fileTitle, num2str(sgPosition), '.jpg'));
+        close;
+    end
 end

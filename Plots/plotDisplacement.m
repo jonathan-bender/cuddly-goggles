@@ -7,7 +7,8 @@ function plotDisplacement(displacement,timeline, targetPath)
     xlabel('time [milliseconds]');
     ylabel('position [millimeters]');
     
-    saveas(gcf,strcat(targetPath, '/displacement.jpg'));
-    close;
-
+    if ~strcmp(targetPath,'')
+        saveas(gcf,strcat(targetPath, '/displacement.jpg'));
+        close;
+    end
 end

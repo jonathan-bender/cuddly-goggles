@@ -1,4 +1,11 @@
-function [CrackStart,CrackEnd,vid]=trimBeforeAndAfterMotion(vid, maxSmoothing, readStart, readEnd)
+function [CrackStart,CrackEnd,Vid]=trimBeforeAndAfterMotion(vid, maxSmoothing, readStart, readEnd)
+    if maxSmoothing == 0
+        CrackStart=readStart;
+        CrackEnd=readEnd;
+        Vid=vid;
+        return;
+    end
+    
     midTime = round(size(vid,3)/2);
     
     CrackStart = readStart;
@@ -24,5 +31,5 @@ function [CrackStart,CrackEnd,vid]=trimBeforeAndAfterMotion(vid, maxSmoothing, r
         end
     end
 
-    vid = vid(:,:,(crackStart-readStart+1):(end-readEnd+crackEnd));
+    Vid = vid(:,:,(CrackStart-readStart+1):(end-readEnd+CrackEnd));
 end

@@ -7,6 +7,8 @@ function plotLightXT(lightXT,xAxis,timeline, targetPath)
     xlabel('x [millimeters]');
     ylabel('t [milliseconds]');
     
-    saveas(gcf,strcat(targetPath, '/lightXT.png'));
-    close;
+    if ~strcmp(targetPath,'')
+        saveas(gcf,strcat(targetPath, '/lightXT.png'));
+        close;
+    end
 end

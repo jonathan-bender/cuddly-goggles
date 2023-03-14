@@ -1,91 +1,70 @@
-function processEvent(sourcePath, sgSourcePath, sgEventNum, targetPath)
-% reading cam file
+
+%% constants
+
+% read video
+SOURCE_PATH='C:\Users\owner\Documents\Jonathan\Experiments\RawResults\Feb19\Exp_Cam_10832_Cine17.avi';
 RANGE = [];
-MAX_READ = 200;
+MAX_READ = 250;
 
 % video data
 FRAMES_PER_MILLISECOND = 581;
 PIXELS_PER_MICRON = 0.006315;
 TOTAL_LENGTH=200000;
 TRIGGER_FRAME=5500;
-TRIGGER_DELAY=7.68;
+TRIGGER_DELAY=7.77;
 
 % video processing
-TRIMMING=[];
-TRIM_NOISY_EDGES=0;
-MIN_SIGNAL=0;
 EDGE_DROP_RANGE=9;
-REFERENCE_FRAMES=1:10;
-MAX_SMOOTHING=5;
+REFERENCE_FRAMES=1:30;
+MOTION_STEP=0;
 SOURCE_FREQUENCY=115;
 SOURCE_FREQUENCY_WIDTH=1;
 
 % crack tip
-CRACK_TIP_THRESHOLD=0.985;
-MIN_DROP=0.08;
-MIN_DROP_RANGE=20;
+CRACK_TIP_THRESHOLD=0.999;
+MIN_DROP=0.1;
+MIN_DROP_RANGE=5;
 
 % strain gauge
+SG_SOURCE_PATH='D:/Experiments/2023-2-19/19-10-38';
+SG_EVENT_NUM=17;
 U_XX=1:19;
 U_YY=1:19;
 
-disp(strcat('Processing event at : ', sourcePath));
+% target path
+TARGET_PATH='C:\Users\owner\Documents\Jonathan\Experiments\Analysis\Photron2\Feb19\17';
 
-[readStart,readEnd, vid] = readNearMotion(sourcePath, RANGE, MAX_READ);
+
+%% read video
+[readStart,readEnd, vid] = readNearMotion(SOURCE_PATH, RANGE, MAX_READ);
+
+%% process video
+vid=removeSourceFrequency(vid, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
+
+[readStart,readEnd,vid]=trimBeforeAndAfterMotion(vid,MOTION_STEP,readStart,readEnd);
 
 timeline=getVideoTimeline(readStart,readEnd,TRIGGER_FRAME,TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
 
-vid=trimEdges(vid,TRIMMING);
-
-vid=trimNoisyEdges(vid, TRIM_NOISY_EDGES, MIN_SIGNAL, MAX_SMOOTHING);
-
-if(size(vid,2) == 0)
-    disp('WARNING: Event is too noisy. No results obtained');
-    return;
-end
-
-vid=nullifyNoisyPixels(vid, MIN_SIGNAL, MAX_SMOOTHING);
-
 xAxis=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
 
-vid=removeSourceFrequency(vid, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
+%% strain gauge
+sgData=GetSgData(SG_SOURCE_PATH,SG_EVENT_NUM,'shift','fix','');
 
-% this should be done further down
-if 0
-[crackStart,crackEnd,vid]=trimBeforeAndAfterMotion(vid,MAX_SMOOTHING,readStart,readEnd);
-
-length = crackEnd - crackStart;
-
-if length < MIN_LENGTH
-    disp('WARNING: Event is too short. No results obtained.');
-    return;
-end
-
-if crackStart < MAX_SMOOTHING
-    disp('WARNING: nucleation near first frame');
-end
-
-end
-
+%% plots
 displacement = getTipDisplacement(vid,xAxis,REFERENCE_FRAMES,CRACK_TIP_THRESHOLD,MIN_DROP,MIN_DROP_RANGE);
-displacement(1:25)=NaN(25,1);
-plotDisplacement(displacement,timeline,targetPath);
+plotDisplacement(displacement,timeline,TARGET_PATH);
 
 lightXT = getNormalizedContactArea(vid,REFERENCE_FRAMES);
-plotLightXT(lightXT,xAxis,timeline,targetPath);
-
-sgData=GetSgData(sgSourcePath,sgEventNum,'shift','fix','');
+plotLightXT(lightXT,xAxis,timeline,TARGET_PATH);
 
 for i=1:size(U_XX,2)
     Uxx=U_XX(i);
     [sgXAxis sgPosition]=getSgXAxis(sgData,Uxx,timeline,displacement);
-    plotSgForDisplacement(sgData.Uxx(:,Uxx),sgXAxis,'U_{xx}','Uxx',sgPosition,targetPath);
+    plotSgForDisplacement(sgData.Uxx(:,Uxx),sgXAxis,'U_{xx}','Uxx',sgPosition,TARGET_PATH);
 end
 
 for i=1:size(U_YY,2)
     Uyy=U_YY(i);
     [sgXAxis sgPosition]=getSgXAxis(sgData,Uyy,timeline,displacement);
-    plotSgForDisplacement(sgData.Uyy(:,Uyy),sgXAxis,'U_{yy}','Uyy',sgPosition,targetPath);
-end
-
+    plotSgForDisplacement(sgData.Uyy(:,Uyy),sgXAxis,'U_{yy}','Uyy',sgPosition,TARGET_PATH);
 end

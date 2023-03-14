@@ -16,7 +16,10 @@ while rightEdge > 2 && (contactArea(rightEdge-1)-contactArea(rightEdge)<edgeDrop
 end
     
 if vidWidth-rightEdge < leftEdge
+    disp(['Found right edge at pixel: ' num2str(rightEdge)]);
     leftEdge=rightEdge-totalLength*resolution;
+else
+    disp(['Found right edge at pixel: ' num2str(leftEdge)]);
 end
 
 XAxis=linspace(-leftEdge/resolution,(vidWidth-leftEdge)/resolution, vidWidth);
