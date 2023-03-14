@@ -10,17 +10,13 @@ SgXAxis=zeros(size(sgTimeline));
 
 for i=1:size(sgTimeline,1)
     t=sgTimeline(i);
-    if t<timeline(1)
-        SgXAxis(i)=tipDisplacement(1);
+    if t<timeline(1) || t>timeline(end)
+        SgXAxis(i)=NaN;
     else
-        if t>timeline(end)
-            SgXAxis(i)=tipDisplacement(end);
-        else
-            for j=1:(size(timeline,2)-1)
-                if (timeline(j)<=t && timeline(j+1)>=t)
-                    diffT=(t-timeline(j))/(timeline(j+1)-timeline(j));
-                    SgXAxis(i)=tipDisplacement(j)*(1-diffT)+tipDisplacement(j+1)*(diffT);
-                end
+        for j=1:(size(timeline,2)-1)
+            if (t>=timeline(j) && t<timeline(j+1))
+                diffT=(t-timeline(j))/(timeline(j+1)-timeline(j));
+                SgXAxis(i)=tipDisplacement(j)*(1-diffT)+tipDisplacement(j+1)*(diffT);
             end
         end
     end

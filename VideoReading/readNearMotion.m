@@ -33,6 +33,8 @@ if ReadEnd > range(2)
     ReadEnd = range(2);
 end
 
+disp(['Reading frames: ' num2str(ReadStart) ' to ' num2str(ReadEnd)]);
+
 vid = read(reader, [ReadStart,ReadEnd]);
 
 Vid = squeeze(vid(:,:,1,:));
