@@ -1,4 +1,4 @@
-function XAxis=getXAxisFromDarkEdges(vid, resolution, totalLength, referenceFrames, edgeDrop)
+function [XAxis, Vid]=getXAxisFromDarkEdges(vid, resolution, totalLength, referenceFrames, edgeDrop)
 
 contactArea=squeeze(mean(mean(vid(:,:,referenceFrames),3)));
 
@@ -19,9 +19,20 @@ if vidWidth-rightEdge < leftEdge
     disp(['Found right edge at pixel: ' num2str(rightEdge)]);
     leftEdge=rightEdge-totalLength*resolution;
 else
-    disp(['Found right edge at pixel: ' num2str(leftEdge)]);
+    disp(['Found left edge at pixel: ' num2str(leftEdge)]);
 end
 
 XAxis=linspace(-leftEdge/resolution,(vidWidth-leftEdge)/resolution, vidWidth);
+Vid=vid;
+
+if rightEdge < vidWidth
+   XAxis=XAxis(1:rightEdge-1);
+   Vid=Vid(:,1:rightEdge-1,:);
+end
+
+if leftEdge > 1
+    XAxis=XAxis(leftEdge+1:end);
+    Vid=Vid(:,leftEdge+1:end,:);
+end
 
 end
