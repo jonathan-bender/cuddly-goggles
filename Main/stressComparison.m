@@ -39,89 +39,90 @@ TIP_RANGE=50;
 % target path
 TARGET_PATH='C:\Users\owner\Documents\Jonathan\Experiments\Analysis\Photron2\Mar23\10';
 
+%% target path
+mkdir(TARGET_PATH);
 
-%%  vid folder details
-fileNames = cellstr(ls(VID_SOURCE_PATH));
-aviFiles = fileNames(cell2mat(cellfun(@(x) size(regexp(x, '(\.avi)$'),1) > 0, fileNames,'UniformOutput', false)));
+%% read video
+motionVid=phantomReadImsNew(VID_SOURCE_PATH,VID_EVENT_NUM,1,1,5e5,1,'all');
 
-for i=1:size(VID_EVENT_NUMS,2)
-    %% set paths
-    vidEventNum=VID_EVENT_NUMS(i);
-    vidEventNumStr = num2str(vidEventNum);
-    currentSourceFilename = char(aviFiles(cell2mat(cellfun(@(x) size(regexp(x, ['\D' vidEventNumStr '(\.avi)$']),1) > 0, aviFiles,'UniformOutput', false))));
-    currentVidPath= strcat(VID_SOURCE_PATH, '\', currentSourceFilename);
-    
-    currentTargetPath = strcat(TARGET_PATH, '\', vidEventNumStr);
-    
-    sgEventNum=vidEventNum+SG_EVENT_SHIFT;
-    
-    mkdir(currentTargetPath);
-    
-    %% read video
-    [motionStart,motionEnd, motionVid] = readNearMotion(currentPath, RANGE, MAX_READ);
+%% process video
+vid=removeSourceFrequency(motionVid, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
 
-    %% process video
-    vid=removeSourceFrequency(motionVid, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
+[readStart,readEnd,vid]=trimBeforeAndAfterMotion(vid,MOTION_STEP,motionStart,motionEnd);
 
-    vid=trimEdges(vid,TRIM_EDGES);
-    
-    [readStart,readEnd,vid]=trimBeforeAndAfterMotion(vid,MOTION_STEP,motionStart,motionEnd);
+vid=trimEdges(vid,TRIM_EDGES);
 
-    timeline=getVideoTimeline(readStart,readEnd,TRIGGER_FRAME,TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
+timeline=getVideoTimeline(readStart,readEnd,TRIGGER_FRAME,TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
 
-    [xAxis, vid]=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
-    
-    %% tip displacement
-    displacement = getTipDisplacement(vid,xAxis,REFERENCE_FRAMES,CRACK_TIP_THRESHOLD,MIN_DROP,MIN_DROP_RANGE);
-    
-    %% load strain gauge
-    sgData=GetSgData(SG_SOURCE_PATH,SG_EVENT_NUM,'shift','fix','');
-    
+[xAxis, vid]=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
+
+%% read sg
+
+
+%% read video
+[motionStart,motionEnd, motionVid] = readNearMotion(currentPath, RANGE, MAX_READ);
+
+%% process video
+vid=removeSourceFrequency(motionVid, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
+
+vid=trimEdges(vid,TRIM_EDGES);
+
+[readStart,readEnd,vid]=trimBeforeAndAfterMotion(vid,MOTION_STEP,motionStart,motionEnd);
+
+timeline=getVideoTimeline(readStart,readEnd,TRIGGER_FRAME,TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
+
+[xAxis, vid]=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
+
+%% tip displacement
+displacement = getTipDisplacement(vid,xAxis,REFERENCE_FRAMES,CRACK_TIP_THRESHOLD,MIN_DROP,MIN_DROP_RANGE);
+
+%% load strain gauge
+sgData=GetSgData(SG_SOURCE_PATH,SG_EVENT_NUM,'shift','fix','');
+
+%% compare stresses
+for j=1:size(SG_INDICES,2)
     %% compare stresses
-    for j=1:size(SG_INDICES,2)
-        %% compare stresses
-        currentIndex=SG_INDICES(j);
-        [currentXAxis sgX h]=getSgXAxis(sgData,currentIndex,timeline,displacement);
-        tipVelocityForDisplacement=getTipVelocityForDisplacement(currentXAxis ,currentTimeline);
-        Uxx=sgData.Uxx(:,currentIndex);
+    currentIndex=SG_INDICES(j);
+    [currentXAxis sgX h]=getSgXAxis(sgData,currentIndex,timeline,displacement);
+    tipVelocityForDisplacement=getTipVelocityForDisplacement(currentXAxis ,currentTimeline);
+    Uxx=sgData.Uxx(:,currentIndex);
 
-        [minUxx minUxxIndex]=min(sgData.Uxx(:,currentIndex));
-        [minU,minUtime]=min(Uxx);
-        [maxU,maxUtime]=max(Uxx);
+    [minUxx minUxxIndex]=min(sgData.Uxx(:,currentIndex));
+    [minU,minUtime]=min(Uxx);
+    [maxU,maxUtime]=max(Uxx);
 
-        Syy=Syy(myRange);
-        [minS,minStime]=min(Syy);
-        [maxS,maxStime]=max(Syy);
-        x=currentXAxis(minUxxIndex)-sgX;
-        v=tipVelocityForDisplacement(minUxxIndex);
-        theta=atan(h/x);
-        r=(h.^2+x.^2).^0.5;
-        
-       
-        thinOnThin=something;
-        
-        %% plot stresses
-        plotExtrimumStresses(sgData.Uxx(:,currentIndex),sgXAxis,'U_{xx}','Uxx',sgPosition,TARGET_PATH);
-        plotExtrimumStresses(KFactor,sgXAxis,'K_{II}(x)','Kii',sgPosition,TARGET_PATH);
-    end
-
+    Syy=Syy(myRange);
+    [minS,minStime]=min(Syy);
+    [maxS,maxStime]=max(Syy);
+    x=currentXAxis(minUxxIndex)-sgX;
+    v=tipVelocityForDisplacement(minUxxIndex);
+    theta=atan(h/x);
+    r=(h.^2+x.^2).^0.5;
     
-        sgData=GetSgData(SG_PATH,EVENT_NUMS(i),'shift','fix','');
-        for j=1:size(SG_INDICES,2)
-            sgIndex=SG_INDICES(1,j);
-            myRange=1000:4000;
-            Uxx=sgData.Uxx(myRange, sgIndex);
-            Syy=sgData.Syy(myRange, sgIndex);
-            [~,crackTime]=min(Uxx);
-            myRange=(crackTime-TIP_RANGE):(crackTime+TIP_RANGE);
-
-            DeltaOfUxx=max(Uxx(myRange))-min(Uxx(myRange));
-            DeltaOfSyy=max(Syy(myRange))-min(Syy(myRange));
-            
-            currentIndex=size(thinOnThin,1)+1;
-            thinOnThin(currentIndex,:)=[DeltaOfUxx,DeltaOfSyy];            
-        end
+   
+    thinOnThin=something;
+    
+    %% plot stresses
+    plotExtrimumStresses(sgData.Uxx(:,currentIndex),sgXAxis,'U_{xx}','Uxx',sgPosition,TARGET_PATH);
+    plotExtrimumStresses(KFactor,sgXAxis,'K_{II}(x)','Kii',sgPosition,TARGET_PATH);
 end
+
+
+    sgData=GetSgData(SG_PATH,EVENT_NUMS(i),'shift','fix','');
+    for j=1:size(SG_INDICES,2)
+        sgIndex=SG_INDICES(1,j);
+        myRange=1000:4000;
+        Uxx=sgData.Uxx(myRange, sgIndex);
+        Syy=sgData.Syy(myRange, sgIndex);
+        [~,crackTime]=min(Uxx);
+        myRange=(crackTime-TIP_RANGE):(crackTime+TIP_RANGE);
+
+        DeltaOfUxx=max(Uxx(myRange))-min(Uxx(myRange));
+        DeltaOfSyy=max(Syy(myRange))-min(Syy(myRange));
+        
+        currentIndex=size(thinOnThin,1)+1;
+        thinOnThin(currentIndex,:)=[DeltaOfUxx,DeltaOfSyy];            
+    end
 
 %% plot stress in time
 
