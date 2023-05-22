@@ -1,9 +1,9 @@
 
 %% constants
 % read video
-SOURCE_PATH='C:\Users\owner\Documents\Jonathan\Experiments\RawResults\Mar30';
+SOURCE_PATH='C:\Users\owner\Documents\Jonathan\Experiments\RawResults\May2';
 RANGE = [];
-MAX_READ = 400;
+MAX_READ = 800;
 
 % video data
 FRAMES_PER_MILLISECOND = 581.196;
@@ -29,7 +29,7 @@ MIN_DROP_RANGE=100;
 LIGHT_IN_TIME=[60 80 100 120 140 160];
 
 % target path
-TARGET_PATH='C:\Users\owner\Documents\Jonathan\Experiments\Analysis\Photron2\Mar30';
+TARGET_PATH='C:\Users\owner\Documents\Jonathan\Experiments\Analysis\Photron2\May2';
 
 %% folder details
 fileNames = cellstr(ls(SOURCE_PATH));
@@ -57,7 +57,7 @@ for i=1:fileNum
     
     [readStart,readEnd,vid]=trimBeforeAndAfterMotion(vid,MOTION_STEP,motionStart,motionEnd);
 
-    timeline=getVideoTimeline(readStart,readEnd,TRIGGER_FRAME,TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
+    timeline=getVideoTimeline(readStart,double(readEnd-readStart),TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
 
     [xAxis, vid]=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
     

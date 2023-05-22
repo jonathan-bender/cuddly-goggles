@@ -2,7 +2,7 @@ function data=GetSgData(exper,eventNum,shift,shear_fix,varargin)
 
 Tstart='start';
 Tend='end';
-smt='1';
+smt=1;
 kind='Rayleigh';
 
 exp_details=expDetailsRead(exper);

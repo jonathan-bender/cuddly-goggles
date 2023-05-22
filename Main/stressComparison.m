@@ -1,167 +1,112 @@
 
-
-%% constants
-
-% read video
-VID_SOURCE_PATH='';
-VID_EVENT_NUMS=[5 6 7 8];
-RANGE = [];
-MAX_READ = 400;
-
-% video data
+%% read video
+SOURCE_PATH='D:\Experiments\2023-5-15\13-26-48';
+EVENT_NUM=4;
+READ_START=-5000;
+READ_LENGTH=5000;
+TRIGGER_DELAY=7;
 FRAMES_PER_MILLISECOND = 581.196;
+
+rawVideo=readBinVideo([SOURCE_PATH '\ph'],EVENT_NUM, READ_START,READ_LENGTH);
+timeline=getVideoTimeline(READ_START,READ_LENGTH,TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
+
+%% process video
+% video data
 PIXELS_PER_MICRON = 0.006315;
 TOTAL_LENGTH=200000;
-TRIGGER_FRAME=5500;
-TRIGGER_DELAY=7.262;
 
 % video processing
-EDGE_DROP_RANGE=9;
+EDGE_DROP_RANGE=10;
 REFERENCE_FRAMES=1:30;
-MOTION_STEP=10;
 SOURCE_FREQUENCY=115;
 SOURCE_FREQUENCY_WIDTH=1;
-TRIM_EDGES=[];
+TRIM_EDGES=[200 1250];
 
-% crack tip
+vid=removeSourceFrequency(rawVideo, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
+vid=trimEdges(vid,TRIM_EDGES);
+[xAxis, vid]=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
+
+%% get displacement
 CRACK_TIP_THRESHOLD=0.97;
-MIN_DROP=0.0005;
-MIN_DROP_RANGE=10;
 
-% strain gauge
-SG_SOURCE_PATH='D:\Experiments\2023-1-23\20-52-14';
-SG_EVENT_SHIFT=1;
-SG_INDICES=[1 2 4 5 7 13 15 16 17 18];
+displacement = getTipDisplacement(vid,xAxis,REFERENCE_FRAMES,CRACK_TIP_THRESHOLD);
 
-% stress drop points
-TIP_RANGE=50;
+%% trim before and after motion
+motionInd=find(isfinite(displacement));
+displacement=displacement(motionInd);
+timeline=timeline(motionInd);
+vid=vid(:,:,motionInd);
 
-% target path
-TARGET_PATH='C:\Users\owner\Documents\Jonathan\Experiments\Analysis\Photron2\Mar23\10';
+%% get velocity
+VELOCITY_SMOOTH=3;
 
-%% target path
-mkdir(TARGET_PATH);
+velocity = getTipVelocity(displacement,timeline,VELOCITY_SMOOTH);
 
-%% read video
-motionVid=phantomReadImsNew(VID_SOURCE_PATH,VID_EVENT_NUM,1,1,5e5,1,'all');
+%% set target path
+TARGET_PATH='';
 
-%% process video
-vid=removeSourceFrequency(motionVid, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
-
-[readStart,readEnd,vid]=trimBeforeAndAfterMotion(vid,MOTION_STEP,motionStart,motionEnd);
-
-vid=trimEdges(vid,TRIM_EDGES);
-
-timeline=getVideoTimeline(readStart,readEnd,TRIGGER_FRAME,TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
-
-[xAxis, vid]=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
-
-%% read sg
-
-
-%% read video
-[motionStart,motionEnd, motionVid] = readNearMotion(currentPath, RANGE, MAX_READ);
-
-%% process video
-vid=removeSourceFrequency(motionVid, SOURCE_FREQUENCY, SOURCE_FREQUENCY_WIDTH, FRAMES_PER_MILLISECOND);
-
-vid=trimEdges(vid,TRIM_EDGES);
-
-[readStart,readEnd,vid]=trimBeforeAndAfterMotion(vid,MOTION_STEP,motionStart,motionEnd);
-
-timeline=getVideoTimeline(readStart,readEnd,TRIGGER_FRAME,TRIGGER_DELAY,FRAMES_PER_MILLISECOND);
-
-[xAxis, vid]=getXAxisFromDarkEdges(vid, PIXELS_PER_MICRON, TOTAL_LENGTH, REFERENCE_FRAMES, EDGE_DROP_RANGE);
-
-%% tip displacement
-displacement = getTipDisplacement(vid,xAxis,REFERENCE_FRAMES,CRACK_TIP_THRESHOLD,MIN_DROP,MIN_DROP_RANGE);
-
-%% load strain gauge
-sgData=GetSgData(SG_SOURCE_PATH,SG_EVENT_NUM,'shift','fix','');
-
-%% compare stresses
-for j=1:size(SG_INDICES,2)
-    %% compare stresses
-    currentIndex=SG_INDICES(j);
-    [currentXAxis sgX h]=getSgXAxis(sgData,currentIndex,timeline,displacement);
-    tipVelocityForDisplacement=getTipVelocityForDisplacement(currentXAxis ,currentTimeline);
-    Uxx=sgData.Uxx(:,currentIndex);
-
-    [minUxx minUxxIndex]=min(sgData.Uxx(:,currentIndex));
-    [minU,minUtime]=min(Uxx);
-    [maxU,maxUtime]=max(Uxx);
-
-    Syy=Syy(myRange);
-    [minS,minStime]=min(Syy);
-    [maxS,maxStime]=max(Syy);
-    x=currentXAxis(minUxxIndex)-sgX;
-    v=tipVelocityForDisplacement(minUxxIndex);
-    theta=atan(h/x);
-    r=(h.^2+x.^2).^0.5;
-    
-   
-    thinOnThin=something;
-    
-    %% plot stresses
-    plotExtrimumStresses(sgData.Uxx(:,currentIndex),sgXAxis,'U_{xx}','Uxx',sgPosition,TARGET_PATH);
-    plotExtrimumStresses(KFactor,sgXAxis,'K_{II}(x)','Kii',sgPosition,TARGET_PATH);
+currentTargetPath='';
+if ~strcmp(TARGET_PATH,'')
+    currentTargetPath=[TARGET_PATH num2str(EVENT_NUM)];
+    mkdir(currentTargetPath);
 end
 
+%% plot displacement, velocity, light intensity & light in time
+LIGHT_INTENSITY_REFERENCE_FRAMES=1:5;
+PLOT_LIGHT_IN_TIME=[70 90 110 130 150];
+CRACK_TIME_THRESHOLD=0.004;
+CRACK_TIME_SMOOTHING=[17 7];
 
-    sgData=GetSgData(SG_PATH,EVENT_NUMS(i),'shift','fix','');
-    for j=1:size(SG_INDICES,2)
-        sgIndex=SG_INDICES(1,j);
-        myRange=1000:4000;
-        Uxx=sgData.Uxx(myRange, sgIndex);
-        Syy=sgData.Syy(myRange, sgIndex);
-        [~,crackTime]=min(Uxx);
-        myRange=(crackTime-TIP_RANGE):(crackTime+TIP_RANGE);
+plotDisplacement(displacement,timeline,currentTargetPath);
+plotVelocity(velocity,timeline,currentTargetPath);
 
-        DeltaOfUxx=max(Uxx(myRange))-min(Uxx(myRange));
-        DeltaOfSyy=max(Syy(myRange))-min(Syy(myRange));
-        
-        currentIndex=size(thinOnThin,1)+1;
-        thinOnThin(currentIndex,:)=[DeltaOfUxx,DeltaOfSyy];            
-    end
+lightXT = getNormalizedContactArea(vid,LIGHT_INTENSITY_REFERENCE_FRAMES);
+plotLightXT(lightXT,xAxis,timeline,currentTargetPath);
+return;
+plotLightInTime(lightXT, xAxis, timeline, PLOT_LIGHT_IN_TIME,currentTargetPath);
 
-%% plot stress in time
+crackTime=getCrackTime(vid,LIGHT_INTENSITY_REFERENCE_FRAMES,CRACK_TIME_THRESHOLD,CRACK_TIME_SMOOTHING);
+plotCrackTime(crackTime,xAxis,timeline,currentTargetPath);
+plotCrackTimeForDisplacement(crackTime,xAxis,FRAMES_PER_MILLISECOND,currentTargetPath);
 
-TIP_RANGE=50;
+%% get sg data
 
-SG_PATH='D:\Experiments\2023-3-23\14-3-28';
-EVENT_NUMS=17;
-sgIndices=[1 2 4 5 7 13 15 16 17 18];
+sgData=GetSgData(SOURCE_PATH,EVENT_NUM,'shift','fix','');
 
+sgTimeline=sgData.t;
+sgTimelineRange=find(sgTimeline>timeline(1)&sgTimeline<timeline(end));
+sgTimeline=sgTimeline(sgTimelineRange);
+Uxx=sgData.Uxx(sgTimelineRange,:);
+Syy=sgData.Syy(sgTimelineRange,:);
+displacementForSG=changeAxis(timeline,sgTimeline,displacement);
 
-for i=1:size(EVENT_NUMS,2)
-        %sgData=GetSgData(sgPath,eventnumbers(i),'shift','fix','');
-        for j=1:size(sgIndices,2)
-            sgIndex=sgIndices(1,j);
-            myRange=1000:4000;
-            Uxx=sgData.Uxx(myRange, sgIndex);
-            Syy=sgData.Syy(myRange, sgIndex);
-            [~,crackTime]=min(Uxx);
-            myRange=(crackTime-TIP_RANGE):(crackTime+TIP_RANGE);
-            Uxx=Uxx(myRange);
-            [minU,minUtime]=min(Uxx);
-            [maxU,maxUtime]=max(Uxx);
-            
-            Syy=Syy(myRange);
-            [minS,minStime]=min(Syy);
-            [maxS,maxStime]=max(Syy);
+%% plot sg for displacement
+SG_INDICES=[1 2 4 5 7 8 9 10 11 12 13 14 15 16 17 18 19];
 
-            figure;
-            plot(Uxx);
-            hold on;
-            plot(minUtime,minU,'or');
-            plot(maxUtime,maxU,'or');
-            hold off;
-            figure;
-            plot(Syy);
-            hold on;
-            plot(minStime,minS,'or');
-            plot(maxStime,maxS,'or');
-            hold off;
+for i=1:size(SG_INDICES,2)   
+    %% plot sg for displacement
+    currentIndex=SG_INDICES(i);
+    
+    currentUxx=Uxx(:,currentIndex);
+    currentSyy=Syy(:,currentIndex);
+    
+    sgX=sgData.x_sg(:,currentIndex);
+    sgH=sgData.y_sg(currentIndex);
+    xMinusXTip=sgX*1000-displacementForSG;
+    
+    [minUxx minUxxInd]=min(currentUxx);
+    [maxUxx maxUxxInd]=max(currentUxx);
+    [minSyy minSyyInd]=min(currentSyy);
+    [maxSyy maxSyyInd]=max(currentSyy);
 
-        end
+    DeltaOfUxx=maxUxx-minUxx;
+    DeltaOfSyy=maxSyy-minSyy;
+    
+    %% add deltas to result
+    currentIndex=size(result,1)+1;
+    result(currentIndex,:)=[DeltaOfUxx,DeltaOfSyy];
+    
+    %% plots
+    plotSgForDisplacement(currentUxx,[minUxxInd,maxUxxInd],xMinusXTip,'U_{xx}','Uxx',sgX,currentTargetPath);
+    plotSgForDisplacement(currentSyy,[minSyyInd maxSyyInd],xMinusXTip,'\sigma_{yy}','Syy',sgX,currentTargetPath);
 end

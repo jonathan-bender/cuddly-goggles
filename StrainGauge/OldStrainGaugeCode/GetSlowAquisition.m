@@ -7,7 +7,41 @@ Camera='Big';
 card1='093';
 card2='094';
 
-sync_event=2;
+sync_event=1;
+
+%% Camera Data
+%--get time
+% Im_path=[exp_dir '\Ph' Camera];
+Im_path=[exp_dir '\Ph'];
+Im_Time_path=[Im_path '\0Time.bin'];
+fid= fopen(Im_Time_path,'r');
+T=(fread(fid,inf,'double'));
+fclose(fid);
+
+%--define parameters
+Pstart=1;
+interval=1;
+Pend=length(T);
+smt_factor=1;
+Rows='all';
+
+
+%--get Camera data
+Images = phantomReadImsNew(Im_path,0,Pstart,interval,Pend,smt_factor,Rows);
+
+%--sync using first event
+t0_path=[Im_path '\eventPhTriggerTime.txt'];
+A=load(t0_path);
+if ~isempty(A)
+    t_0=A(sync_event);
+else
+    t_0=0;
+end
+
+T=T-t_0;
+
+Cam.Images=Images;
+Cam.TimeVec=T;
 
 %% SG data
 %--get SG stream
@@ -34,6 +68,7 @@ SG.t_Master=t_Master;
 SG.time=t_Slave;            %   take the slave time vector because the trig measurement is currently there
 
 %--sync using first event
+if 0
 df=diff(SG.Trig);
 f=find(df<-0.1);
 
@@ -42,7 +77,7 @@ TrigerTimes=SG.time(f)-t_0;
 SG.time=SG.time-t_0;
 SG.t_Slave=SG.t_Slave-t_0;
 SG.t_Master=SG.t_Master-t_0;
-
+end
 %% save
 lastSlashPosition = find(exp_dir == '\', 1, 'last');
 if ~isempty(lastSlashPosition)
@@ -51,7 +86,10 @@ else
     SlowAqStruct.Date = exp_dir;
 end
 
+SlowAqStruct.Cam=Cam;
 SlowAqStruct.SG=SG;
 SlowAqStruct.sync_event=sync_event;
+
 SlowAqStruct.TrigerTimes=TrigerTimes;
+
 

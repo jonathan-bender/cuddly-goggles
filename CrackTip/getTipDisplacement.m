@@ -1,4 +1,4 @@
-function Displacement=getTipDisplacement(vid,xAxis,referenceFrames,threshold,minDrop,spread)
+function Displacement=getTipDisplacement(vid,xAxis,referenceFrames,threshold)
 
 normalized = getNormalizedContactArea(vid,referenceFrames);
 
@@ -18,7 +18,7 @@ for x=1:vidWidth
 end
 
 for t=1:timeSize
-    for x=2:vidWidth
+    for x=2:vidWidth-10
         if (timeForDisplacement(x) >= t && timeForDisplacement(x-1) < t) ...
                 || (timeForDisplacement(x) < t && timeForDisplacement(x-1) >= t)
             Displacement(t)=xAxis(x);
@@ -26,14 +26,5 @@ for t=1:timeSize
         end
     end
 end
-
-end
-
-function IsNoisy=isNoisyPixel(arr,minRatio,spread)
-arr=arr(:);
-drop = mean(arr(1:spread)) - mean(arr(end-spread:end));
-arrMean = mean(arr);
-
-IsNoisy = double(drop) / arrMean < minRatio;
 
 end

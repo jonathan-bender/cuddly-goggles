@@ -51,6 +51,25 @@ else
     cal_dir=(exp_dir);
 end
 
+event4offset=1;         %using event1 for offset correction
+%--offset for Master
+ch_offset=acq132_event_read(path_Master,event4offset);
+ch_offset=mean(ch_offset);ch_offset_Master=ch_offset;
+ch_number_for_offset = find(offset_Master==0);
+ch_Master(:,ch_number_for_offset)=ch_Master(:,ch_number_for_offset)-repmat(ch_offset(ch_number_for_offset),length(ch_Master(:,1)),1);%offset correction// comment this line for disable
+ch_number_for_offset = find(offset_Master~=0);
+ch_Master(:,ch_number_for_offset)=ch_Master(:,ch_number_for_offset)-repmat(offset_Master(ch_number_for_offset),length(ch_Master(:,1)),1);%offset correction with specified values// comment this line for disable
+ch_Master=ch_Master./repmat(factor_Master,length(ch_Master(:,1)),1);%unit conversion notice the using "./" instead ".*", empty channels will be "inf"
+
+%--offset for Slave
+ch_offset=acq132_event_read(path_Slave,event4offset);
+ch_offset=mean(ch_offset);ch_offset_Slave=ch_offset;
+ch_number_for_offset = find(offset_Slave==0);
+ch_Slave(:,ch_number_for_offset)=ch_Slave(:,ch_number_for_offset)-repmat(ch_offset(ch_number_for_offset),length(ch_Slave(:,1)),1);%offset correction// comment this line for disable
+ch_number_for_offset = find(offset_Slave~=0);
+ch_Slave(:,ch_number_for_offset)=ch_Slave(:,ch_number_for_offset)-repmat(offset_Slave(ch_number_for_offset),length(ch_Slave(:,1)),1);%offset correction with specified values// comment this line for disable
+ch_Slave=ch_Slave./repmat(factor_Slave,length(ch_Slave(:,1)),1);
+
 %--------------------organize the data
 sg_names=[ch_Master_K(sg_Master_order)' ch_Slave_K(sg_Slave_order)'];
 sg=[ch_Master(:,sg_Master_order) ch_Slave(:,sg_Slave_order)]; %ordered strain gages

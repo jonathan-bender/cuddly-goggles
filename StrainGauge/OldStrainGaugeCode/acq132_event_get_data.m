@@ -9,20 +9,19 @@ function e=acq132_event_get_data(exp_dir,event,Tstart,Tend,smt,varargin)
 %event- may be vector. but if argout=0, only last event is returned
 
 event_vec=event;
-current_dir=exp_dir;
 
-lastSlashPosition = find(current_dir == '\', 1, 'last');
-Date = current_dir(lastSlashPosition+1:end);
+lastSlashPosition = find(exp_dir == '\', 1, 'last');
+Date = exp_dir(lastSlashPosition+1:end);
 
 
 for k=1:length(event_vec)
     event=event_vec(k);
     %--------------read the data and correct offset units
 %     path=[current_dir '\' exp_dir '\acq132_093\multivent'];
-    path=[current_dir '/acq132_093/multivent'];
+    path=[exp_dir '/acq132_093/multivent'];
     [ch_Master,t_Master,t_trig_Master]=acq132_event_read(path,event);
 %     path=[current_dir '\' exp_dir '\acq132_094\multivent'];
-    path=[current_dir '/acq132_094/multivent'];
+    path=[exp_dir '/acq132_094/multivent'];
     [ch_Slave,t,t_trig]=acq132_event_read(path,event);
     
     %---check if there is no missing data
